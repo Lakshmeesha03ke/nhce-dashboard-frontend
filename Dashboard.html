@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NHCE — Smart Campus Energy Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      --bg:#f7fafc;
+      --card:#ffffff;
+      --accent:#1e88e5;
+      --muted:#2c42b0;
+      --glass: rgba(255,255,255,0.7);
+      --success:#16a34a;
+      --danger:#ef4444;
+      --warning-bg: #fff4f4;
+      --ok-bg: #eefdf0;
+    }
+
+    *{box-sizing:border-box;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#eef2f7);color:#0f172a;min-height:100vh;display:flex;flex-direction:column}
+    .topbar{height:72px;background:linear-gradient(90deg,var(--card),#f8fbff);display:flex;align-items:center;justify-content:space-between;padding:0 20px;box-shadow:0 2px 8px rgba(16,24,40,0.04)}
+    .brand{display:flex;gap:12px;align-items:center}
+    .logo{width:56px;height:56px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#60a5fa);display:flex;align-items:center;justify-content:center;color:white;font-weight:800}
+    .title{font-size:18px;font-weight:800}
+    .subtitle{font-size:12px;color:var(--muted)}
+
+    .container{display:grid;grid-template-columns:340px 1fr;gap:18px;padding:18px;flex:1}
+    /* sidebar */
+    .sidebar{background:var(--card);padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(16,24,40,0.04)}
+    .sidebar h3{margin:0 0 12px 0}
+    .nav{display:flex;flex-direction:column;gap:8px}
+    .nav button{background:transparent;border:0;padding:10px;border-radius:8px;text-align:left;color:#0f172a;font-weight:600;cursor:pointer}
+    .nav button.active{background:linear-gradient(90deg,rgba(30,136,229,0.12),rgba(96,165,250,0.06));color:var(--accent)}
+
+    /* health box */
+    .health-box{margin-top:12px;padding:12px;border-radius:12px;font-weight:700;display:flex;align-items:center;gap:12px}
+    .health-bubble{width:18px;height:18px;border-radius:50%;background:var(--success);box-shadow:0 0 6px rgba(0,0,0,0.06)}
+    .warning-banner{display:none;margin-top:12px;padding:10px;border-radius:10px;background:var(--warning-bg);color:var(--danger);font-weight:700;text-align:center}
+
+    /* main */
+    .main{display:flex;flex-direction:column;gap:18px}
+    .cards{display:flex;gap:14px}
+    .card{flex:1;background:var(--card);padding:16px;border-radius:12px;box-shadow:0 8px 20px rgba(16,24,40,0.04);min-width:0}
+    .card .kpi{display:flex;align-items:center;justify-content:space-between}
+    .kpi .left{display:flex;flex-direction:column}
+    .kpi .value{font-size:20px;font-weight:800}
+    .kpi .label{font-size:12px;color:var(--muted)}
+    .small{font-size:12px;color:var(--muted);color: #0b44ee;}
+
+    /* building overview (Option B: card style) */
+    .buildings{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .building-card{background:linear-gradient(180deg,var(--glass),#fff);padding:12px;border-radius:12px;border:1px solid rgba(14,165,233,0.06);cursor:pointer;display:flex;flex-direction:column;gap:8px;min-height:110px}
+    .building-card:hover{transform:translateY(-4px);transition:all .15s ease}
+    .building-header{display:flex;justify-content:space-between;align-items:center}
+    .building-name{font-weight:800}
+    .building-meta{display:flex;gap:8px;align-items:center;font-size:13px}
+    .mini-bubble{width:12px;height:12px;border-radius:50%}
+    .status-text{font-weight:700;font-size:13px}
+
+    /* charts area */
+    .chart-wrap{display:flex;gap:12px}
+    .chart-card{background:var(--card);padding:14px;border-radius:12px;flex:1;box-shadow:0 8px 20px rgba(16,24,40,0.04)}
+
+    /* alerts */
+    .alerts{background:linear-gradient(180deg,#fff6f6,#fff);padding:12px;border-radius:12px;border:1px solid rgba(239,68,68,0.06)}
+    .alert-item{display:flex;justify-content:space-between;padding:8px 4px;border-bottom:1px dashed rgba(0,0,0,0.04)}
+    .alert-item:last-child{border-bottom:0}
+
+    /* footer / link */
+    .footer{padding:12px 18px;background:transparent;text-align:center;font-size:14px;color:var(--muted)}
+    .website-link{display:inline-block;margin-top:8px;padding:8px 12px;border-radius:8px;text-decoration:none;font-weight:700;border:1px solid rgba(30,136,229,0.08);background:linear-gradient(90deg,rgba(30,136,229,0.06),transparent);color:var(--accent)}
+
+    /* footer small */
+    .controls{display:flex;gap:8px;align-items:center}
+    .btn{padding:8px 12px;border-radius:8px;border:0;background:var(--accent);color:white;font-weight:600;cursor:pointer}
+    .btn.ghost{background:transparent;color:var(--accent);border:1px solid rgba(30,136,229,0.12)}
+
+    @media (max-width:900px){
+      .container{grid-template-columns:1fr;}
+      .buildings{grid-template-columns:repeat(2,1fr)}
+      .cards{flex-direction:column}
+      .chart-wrap{flex-direction:column}
+    }
+  .topbar .subtitle{
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+  }
+    
+  </style>
+</head>
+<body>
+  <div class="topbar" style="justify-content:center; position:relative;">
+
+    <!-- Center College Name -->
+    <div style="text-align:center;">
+        <div class="title" style="font-size:22px; font-weight:900; color: #dd137c;">
+            New Horizon College of Engineering
+            <div class="subtitle">Smart Campus — Energy Dashboard</div>
+        </div>
+        
+    </div>
+
+    <!-- Move Logo to Right Side, Stylish Circular Frame -->
+    <div style="
+        position:absolute;
+        left:50px;
+        top:10%;
+        border-radius: 2rem;
+        border: #141514 1px solid;
+        overflow: hidden;
+        width:90px;
+        height:70px;
+        border-radius:30%;
+        background: linear-gradient(135deg, #1e88e5, #60a5fa);
+        color: #60a5fa;
+    ">
+        <img src="download.jpg" alt="NHCE Logo" style="width:100%; height:100%; object-fit:cover;">
+    </div>
+
+</div>
+
+  <div class="topbar">
+    <div class="brand">
+     
+      <div>
+        <div class="title">New Horizon College of Engineering</div>
+        
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="small">Live: <span id="liveStatus">Running</span></div>
+      <div class="controls">
+        <button class="btn" id="pauseBtn">Pause</button>
+        <button class="btn ghost" id="resetBtn">Reset Data</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="container">
+    <aside class="sidebar">
+      <h3>Menu</h3>
+      <div class="nav">
+        <button class="active">Overview</button>
+        <button>Buildings</button>
+        <button>Analytics</button>
+        <button>Alerts</button>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(15,23,42,0.04)">
+      <div>
+        <div class="small" style="margin-bottom:6px">Selected Building</div>
+        <div id="selectedBuilding" style="font-weight:700">Main Admin</div>
+      </div>
+
+      <hr style="margin:12px 0;border:none;border-top:1px solid rgba(15,23,42,0.04)">
+
+      <!-- Overall prediction + health -->
+      <div style="display:flex;gap:8px;align-items:center;justify-content:space-between">
+        <div>
+          <div class="small">Predicted Tomorrow</div>
+          <div id="prediction" style="font-weight:800">-- kWh</div>
+        </div>
+        <div>
+          <div class="small">Status</div>
+          <!-- overall health text (kept for compatibility) -->
+          <div id="health" style="font-weight:700;color:var(--success);display:none">Healthy</div>
+        </div>
+      </div>
+
+      <!-- visual health box + warning -->
+      <div id="healthBox" class="health-box" style="background:var(--ok-bg);color:#0a7a1b">
+        <div id="healthBubble" class="health-bubble" style="background:var(--success)"></div>
+        <div id="healthText">Healthy</div>
+      </div>
+
+      <div id="warningBox" class="warning-banner">⚠ High Consumption Detected</div>
+
+    </aside>
+
+    <main class="main">
+      <div class="cards">
+        <div class="card">
+          <div class="kpi">
+            <div class="left">
+              <div class="label">Current Power</div>
+              <div class="value" id="powerVal">0.0 kW</div>
+            </div>
+            <div>
+              <div class="label">Voltage</div>
+              <div class="value" id="voltageVal">0 V</div>
+            </div>
+            <div>
+              <div class="label">Current</div>
+              <div class="value" id="currentVal">0 A</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;" class="small">Updated every 5 seconds • Simulated data</div>
+        </div>
+
+        <div class="card">
+          <div class="kpi">
+            <div class="left">
+              <div class="label">Today's Energy</div>
+              <div class="value" id="todayVal">0.0 kWh</div>
+            </div>
+            <div>
+              <div class="label">This Month</div>
+              <div class="value" id="monthVal">0.0 kWh</div>
+            </div>
+            <div>
+              <div class="label">Peak</div>
+              <div class="value" id="peakVal">0.0 kW</div>
+            </div>
+          </div>
+          <div style="margin-top:10px; display:flex;gap:8px;align-items:center">
+            <div class="small">Building Selector:</div>
+            <select id="buildingSelect">
+              <option>Main Admin</option>
+              <option>CSE Department</option>
+              <option>ECE Department</option>
+              <option>Mechanical Dept</option>
+              <option>Hostel A</option>
+              <option>Hostel B</option>
+              <option>Library</option>
+              <option>Canteen</option>
+              <option>Labs Block</option>
+              <option>Auditorium</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="kpi">
+            <div class="left">
+              <div class="label">Active Alerts</div>
+              <div class="value" id="alertCount">0</div>
+            </div>
+            <div>
+              <div class="label">Avg. 1h</div>
+              <div class="value" id="avg1h">0.0 kW</div>
+            </div>
+            <div>
+              <div class="label">Avg. 24h</div>
+              <div class="value" id="avg24h">0.0 kW</div>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+            <button class="btn" id="muteAlerts">Mute Alerts</button>
+            <button class="btn ghost" id="exportBtn">Export CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <section class="chart-wrap">
+        <div class="chart-card">
+          <h4 style="margin:0 0 8px 0">Live Power (kW) — Selected Building</h4>
+          <canvas id="liveChart" height="120"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <h4 style="margin:0 0 8px 0">Daily Consumption (kWh) — Last 7 days</h4>
+          <canvas id="dailyChart" height="120"></canvas>
+        </div>
+      </section>
+
+      <div style="display:flex;gap:12px">
+        <div class="card" style="flex:2">
+          <h4 style="margin-top:0">Buildings Overview</h4>
+          <div class="buildings" id="buildingsGrid"></div>
+        </div>
+
+        <div class="card" style="flex:1">
+          <h4 style="margin-top:0">Alerts</h4>
+          <div class="alerts" id="alertsPanel">
+            <!-- alerts injected here -->
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- centered NHCE link / footer -->
+  <div class="footer">
+    <div>For more information and internship details:</div>
+    <a class="website-link" href="https://newhorizoncollegeofengineering.in/programs/" target="_blank" rel="noopener">
+      If U want More Information Visit NHCE [For Interns]
+    </a>
+  </div>
+
+  <script>
+    // ------------------ College-specific simulated dataset ------------------
+    const BUILDINGS = ['Main Admin','CSE Department','ECE Department','Mechanical Dept','Hostel A','Hostel B','Library','Canteen','Labs Block','Auditorium'];
+    const state = {
+      selected: 'Main Admin',
+      running: true,
+      muteAlerts: false,
+      data: {}
+    };
+
+    // initialise data for each building: keep recent samples + 7-day
+    BUILDINGS.forEach(b => {
+      state.data[b] = {
+        live: Array.from({length:40},()=>randomPower()), // recent power samples (kW)
+        daily: randomDailyArray(7) // last 7 days kWh
+      };
+    });
+
+    // helper random generators
+    function randomPower(){ return +(Math.random()*6 + 0.4).toFixed(2); } // 0.4 - 6.4 kW
+    function randomVoltage(){ return Math.round(Math.random()*30 + 210); } // 210-240
+    function randomCurrent(power,volt){ return +( (power*1000)/(volt||220) ).toFixed(2); }
+    function randomDailyArray(n){ return Array.from({length:n},()=>+(Math.random()*40 + 20).toFixed(2)); }
+
+    // DOM refs
+    const powerVal = document.getElementById('powerVal');
+    const voltageVal = document.getElementById('voltageVal');
+    const currentVal = document.getElementById('currentVal');
+    const todayVal = document.getElementById('todayVal');
+    const monthVal = document.getElementById('monthVal');
+    const peakVal = document.getElementById('peakVal');
+    const buildingSelect = document.getElementById('buildingSelect');
+    const selectedBuilding = document.getElementById('selectedBuilding');
+    const prediction = document.getElementById('prediction');
+    const healthText = document.getElementById('healthText');
+    const healthBubble = document.getElementById('healthBubble');
+    const healthBox = document.getElementById('healthBox');
+    const warningBox = document.getElementById('warningBox');
+    const alertsPanel = document.getElementById('alertsPanel');
+    const alertCount = document.getElementById('alertCount');
+    const avg1h = document.getElementById('avg1h');
+    const avg24h = document.getElementById('avg24h');
+
+    // charts contexts
+    const liveCtx = document.getElementById('liveChart').getContext('2d');
+    const dailyCtx = document.getElementById('dailyChart').getContext('2d');
+
+    // render buildings grid (Option B: cards)
+    const buildingsGrid = document.getElementById('buildingsGrid');
+    function renderBuildings(){
+      buildingsGrid.innerHTML = '';
+      BUILDINGS.forEach(b=>{
+        const cur = +(state.data[b].live.slice(-1)[0]).toFixed(2);
+        const today = todayKWh(b);
+        const predicted = aiPredict(b);
+        const isUnhealthy = (cur > 5.5 || predicted > 5.5);
+
+        const card = document.createElement('div');
+        card.className = 'building-card';
+        card.innerHTML = `
+          <div class="building-header">
+            <div class="building-name">${b}</div>
+            <div class="building-meta">
+              <div class="mini-bubble" style="background:${isUnhealthy? 'var(--danger)':'var(--success)'}"></div>
+              <div class="status-text">${isUnhealthy? 'Unhealthy':'Healthy'}</div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-weight:800">${cur} kW</div>
+              <div class="small">Live Power</div>
+            </div>
+            <div>
+              <div style="font-weight:800">${today} kWh</div>
+              <div class="small">Today</div>
+            </div>
+          </div>
+        `;
+        card.onclick = ()=>{ state.selected = b; buildingSelect.value = b; updateUI(); };
+        buildingsGrid.appendChild(card);
+      });
+    }
+
+    // compute today's kWh as sum of recent live samples * (interval hours)
+    function todayKWh(b){
+      const samples = state.data[b].live;
+      // sample every 5s -> each sample = 5/3600 hours
+      const hrsPerSample = 5/3600;
+      const sumKW = samples.reduce((s,v)=>s+v,0);
+      return +(sumKW * hrsPerSample).toFixed(2);
+    }
+
+    // ---------------- Charts setup ----------------
+    const liveChartObj = new Chart(liveCtx,{
+      type:'line',
+      data:{labels:state.data[state.selected].live.map((_,i)=>i),datasets:[{label:'Power (kW)',data:state.data[state.selected].live.slice(-40),fill:true,tension:0.25,pointRadius:0}]},
+      options:{animation:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,suggestedMax:8},x:{display:false}}}
+    });
+
+    const dailyChartObj = new Chart(dailyCtx,{
+      type:'bar',
+      data:{labels:['-6d','-5d','-4d','-3d','-2d','-1d','Today'],datasets:[{label:'kWh',data:state.data[state.selected].daily,barPercentage:0.6}]},
+      options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}
+    });
+
+    // ---------------- Alerts logic ----------------
+    const ALERTS = [];
+    function evaluateAlerts(){
+      ALERTS.length = 0;
+      BUILDINGS.forEach(b=>{
+        const cur = state.data[b].live.slice(-1)[0];
+        const volt = randomVoltage();
+        if(cur>5.0) ALERTS.push({b,level:'High Load',msg:`${cur} kW > 5.0 kW`});
+        if(volt<200) ALERTS.push({b,level:'Low Voltage',msg:`${volt} V`});
+      });
+    }
+
+    function renderAlerts(){
+      alertsPanel.innerHTML = '';
+      const items = ALERTS.slice(0,6);
+      items.forEach(a=>{
+        const div = document.createElement('div');
+        div.className='alert-item';
+        div.innerHTML = `<div><strong>${a.level}</strong> — ${a.b}</div><div class="small">${a.msg}</div>`;
+        alertsPanel.appendChild(div);
+      });
+      alertCount.textContent = ALERTS.length;
+    }
+
+    // ---------------- Predictor (simple AI-like) ----------------
+    function aiPredict(bld) {
+      const arr = state.data[bld].daily;
+      if(!arr || arr.length===0) return 0;
+      const avg = arr.reduce((s,v)=>s+v,0) / arr.length;
+      // small trend boost if last day > previous
+      const trendBoost = (arr[arr.length-2] < arr[arr.length-1]) ? 2.5 : 0;
+      return +(avg + trendBoost).toFixed(2);
+    }
+
+    // ---------------- Health update (overall) ----------------
+    const threshold = 10.0;   // Healthy limit — change as you want
+
+function updateHealthStatus(currentKW, predictedKW) {
+    const healthBubble = document.getElementById("healthBubble");
+    const healthText = document.getElementById("healthText");
+    const healthBox = document.getElementById("healthBox");
+    const warningBox = document.getElementById("warningBox");
+
+    if (currentKW > threshold || predictedKW > threshold) {
+
+        // RED — Unhealthy
+        healthBubble.style.background = "#ef4444";
+        healthText.textContent = "Unhealthy";
+        healthBox.style.background = "#ffe5e5";
+        healthBox.style.color = "#b91c1c";
+        warningBox.style.display = "block";
+
+    } else {
+
+        // GREEN — Healthy
+        healthBubble.style.background = "#22c55e";
+        healthText.textContent = "Healthy";
+        healthBox.style.background = "#e8ffe8";
+        healthBox.style.color = "#0a7a1b";
+        warningBox.style.display = "none";
+
+    }
+}
+
+
+    // ---------------- UI update ----------------
+    function updateUI(){
+      selectedBuilding.textContent = state.selected;
+
+      const cur = +(state.data[state.selected].live.slice(-1)[0]).toFixed(2);
+      const volt = randomVoltage();
+      const curr = randomCurrent(cur,volt);
+
+      powerVal.textContent = cur + ' kW';
+      voltageVal.textContent = volt + ' V';
+      currentVal.textContent = curr + ' A';
+      todayVal.textContent = todayKWh(state.selected) + ' kWh';
+      monthVal.textContent = (state.data[state.selected].daily.reduce((s,v)=>s+v,0)+Math.random()*20).toFixed(2) + ' kWh';
+      peakVal.textContent = Math.max(...state.data[state.selected].live).toFixed(2) + ' kW';
+
+      // averages
+      const lastSamples = state.data[state.selected].live;
+      const avg1 = +(lastSamples.reduce((s,v)=>s+v,0)/(lastSamples.length||1)).toFixed(2);
+      avg1h.textContent = avg1 + ' kW';
+      avg24h.textContent = +(state.data[state.selected].daily.reduce((s,v)=>s+v,0)/state.data[state.selected].daily.length).toFixed(2) + ' kW';
+
+      // prediction (AI-like)
+      const predictedVal = aiPredict(state.selected);
+      prediction.innerHTML = `🔮 ${predictedVal} kWh`;
+
+      // overall health
+      setOverallHealth(cur, predictedVal);
+
+      // update charts
+      liveChartObj.data.datasets[0].data = state.data[state.selected].live.slice(-40);
+      liveChartObj.update();
+      dailyChartObj.data.datasets[0].data = state.data[state.selected].daily;
+      dailyChartObj.update();
+
+      // rebuild the overview grid (cards show fresh mini-health)
+      renderBuildings();
+    }
+
+    // ---------------- periodic update ----------------
+    function tick(){
+      if(!state.running) return;
+
+      BUILDINGS.forEach(b=>{
+        const next = +(state.data[b].live.slice(-1)[0] + (Math.random()-0.45)*0.6).toFixed(2);
+        const clipped = Math.max(0.2, Math.min(7.0, next));
+        state.data[b].live.push(clipped);
+        if(state.data[b].live.length>1440) state.data[b].live.shift();
+      });
+
+      // update today's daily value a bit (demo)
+      BUILDINGS.forEach(b=>{
+        const last = state.data[b].daily.slice(-1)[0];
+        const updated = +(last + (Math.random()-0.4)*0.5).toFixed(2);
+        state.data[b].daily[state.data[b].daily.length-1] = Math.max(10,updated);
+      });
+
+      evaluateAlerts();
+      if(!state.muteAlerts) renderAlerts();
+      updateUI();
+    }
+
+    // start interval (5 seconds)
+    const INTERVAL = 5000;
+    let timer = setInterval(tick,INTERVAL);
+
+    // ---------------- controls ----------------
+    document.getElementById('pauseBtn').onclick = function(){
+      state.running = !state.running;
+      document.getElementById('liveStatus').textContent = state.running ? 'Running' : 'Paused';
+      this.textContent = state.running ? 'Pause' : 'Resume';
+    }
+    document.getElementById('resetBtn').onclick = function(){
+      BUILDINGS.forEach(b=>{ state.data[b].live = Array.from({length:40},()=>randomPower()); state.data[b].daily = randomDailyArray(7); });
+      evaluateAlerts(); renderAlerts(); updateUI();
+    }
+    document.getElementById('buildingSelect').onchange = function(){ state.selected = this.value; updateUI(); }
+    document.getElementById('muteAlerts').onclick = function(){ state.muteAlerts = !state.muteAlerts; this.textContent = state.muteAlerts ? 'Unmute Alerts' : 'Mute Alerts'; }
+    document.getElementById('exportBtn').onclick = function(){
+      const arr = state.data[state.selected].live;
+      let csv = 'index,power_kW\n';
+      arr.forEach((v,i)=> csv+= `${i},${v}\n`);
+      const blob = new Blob([csv],{type:'text/csv'}); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = `${state.selected.replace(/ /g,'_')}_live.csv`; a.click(); URL.revokeObjectURL(url);
+    }
+
+    // initial render
+    evaluateAlerts(); renderAlerts(); renderBuildings(); updateUI();
+
+    // quick keyboard shortcut: press "s" to snapshot current UI (download small JSON)
+    document.addEventListener('keydown',e=>{ if(e.key==='s'){ const snap={selected:state.selected,data:state.data}; const b=new Blob([JSON.stringify(snap)],{type:'application/json'}); const u=URL.createObjectURL(b); const a=document.createElement('a'); a.href=u; a.download='snapshot.json'; a.click(); URL.revokeObjectURL(u); } });
+
+  </script>
+</body>
+</html>
